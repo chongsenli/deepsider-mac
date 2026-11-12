@@ -1,0 +1,35 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "DeepSider",
+  "version": "1.3.2",
+  "identifier": "app.deepsider.mac",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "dmg",
+      "app"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns"
+    ],
+    "category": "Productivity",
+    "shortDescription": "DeepSider for macOS",
+    "longDescription": "DeepSider 网页版的 macOS 原生外壳（Tauri + Rust）",
+    "macOS": {
+      "minimumSystemVersion": "13.0"
+    }
+  }
+}

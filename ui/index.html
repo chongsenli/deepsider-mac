@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light dark">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeepSider Toolbar</title>
+<style>
+  :root {
+    color-scheme: light dark;
+
+    /* surfaces */
+    --bar-bg: linear-gradient(180deg, #f7f7f9 0%, #ededf0 100%);
+    --bar-border: rgba(0, 0, 0, 0.13);
+    --divider: rgba(0, 0, 0, 0.10);
+
+    /* foreground */
+    --fg: #3c3c40;
+    --fg-title: rgba(0, 0, 0, 0.68);
+    --fg-muted: rgba(0, 0, 0, 0.46);
+
+    /* interaction */
+    --hover: rgba(0, 0, 0, 0.07);
+    --active: rgba(0, 0, 0, 0.12);
+    --focus-ring: rgba(10, 132, 255, 0.60);
+    --accent: #0a84ff;
+
+    /* hint / notice */
+    --hint-bg: rgba(247, 247, 249, 0.94);
+    --notice-fg: rgba(0, 0, 0, 0.62);
+
+    /* misc */
+    --disabled-opacity: 0.32;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bar-bg: linear-gradient(180deg, #303033 0%, #282829 100%);
+      --bar-border: rgba(255, 255, 255, 0.10);
+      --divider: rgba(255, 255, 255, 0.12);
+
+      --fg: #d8d8dc;
+      --fg-title: rgba(255, 255, 255, 0.76);
+      --fg-muted: rgba(216, 216, 220, 0.58);
+
+      --hover: rgba(255, 255, 255, 0.10);
+      --active: rgba(255, 255, 255, 0.17);
+      --focus-ring: rgba(10, 132, 255, 0.60);
+      --accent: #0a84ff;
+
+      --hint-bg: rgba(48, 48, 51, 0.94);
+      --notice-fg: rgba(255, 255, 255, 0.72);
+
+      --disabled-opacity: 0.35;
+    }
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 48px;
+    overflow: hidden;
+    background: transparent;
+    color-scheme: light dark;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    cursor: default;
+  }
+
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-user-drag: none;
+  }
+
+  .bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 48px;
+    padding: 0 8px;
+    overflow: hidden;
+    background: var(--bar-bg);
+    border-bottom: 1px solid var(--bar-border);
+  }
+
+  .group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: 0 0 auto;
+  }
+
+  .divider {
+    flex: 0 0 auto;
+    width: 1px;
+    height: 16px;
+    background: var(--divider);
+    margin: 0 4px;
+  }
+
+  button {
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--fg);
+    font: inherit;
+    cursor: default;
+    border-radius: 6px;
+    transition: background-color 0.12s ease, opacity 0.12s ease;
+  }
+
+  button::-moz-focus-inner { border: 0; }
+
+  .btn-nav {
+    width: 28px;
+    height: 28px;
+  }
+
+  .btn-nav:hover:not(:disabled) { background: var(--hover); }
+  .btn-nav:active:not(:disabled) { background: var(--active); }
+
+  button:disabled {
+    opacity: var(--disabled-opacity);
+    background: transparent !important;
+  }
+
+  button:focus { outline: none; }
+  button:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
+  }
+
+  .icon {
+    display: block;
+    width: 16px;
+    height: 16px;
+    pointer-events: none;
+  }
+
+  .icon-sm {
+    display: block;
+    width: 12px;
+    height: 12px;
+    pointer-events: none;
+  }
+
+  /* reload / stop toggle */
+  .btn-nav .glyph-stop { display: none; }
+  .btn-nav.is-loading .glyph-reload { display: none; }
+  .btn-nav.is-loading .glyph-stop { display: block; }
+
+  /* middle title area */
+  .title-area {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    border-radius: 5px;
+  }
+
+  .title-text {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    -webkit-mask-image: none;
+    text-overflow: ellipsis;
+    font-size: 12.5px;
+    line-height: 28px;
+    letter-spacing: 0.1px;
+    color: var(--fg-title);
+    transition: opacity 0.14s ease;
+  }
+
+  .title-area.notice-active .title-text { opacity: 0; }
+  .title-area.hint-active .title-text { opacity: 0.10; }
+
+  .notice {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    top: 0;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 12.5px;
+    line-height: 28px;
+    letter-spacing: 0.1px;
+    color: var(--notice-fg);
+    opacity: 0;
+    transform: translateY(2px);
+    transition: opacity 0.16s ease, transform 0.16s ease;
+    pointer-events: none;
+  }
+
+  .notice.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .notice-dot {
+    flex: 0 0 auto;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .notice-label {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .copy-hint {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%) scale(0.96);
+    padding: 2px 8px;
+    border-radius: 5px;
+    background: var(--hint-bg);
+    box-shadow: 0 0 0 1px var(--divider);
+    color: var(--fg-title);
+    font-size: 11px;
+    line-height: 16px;
+    letter-spacing: 0.1px;
+    opacity: 0;
+    transition: opacity 0.14s ease, transform 0.14s ease;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .copy-hint.show {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+
+  /* right cluster */
+  .btn-zoom {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+  }
+
+  .btn-zoom:hover { background: var(--hover); }
+  .btn-zoom:active { background: var(--active); }
+
+  .zoom-label {
+    width: 40px;
+    height: 22px;
+    border-radius: 5px;
+    font-size: 11.5px;
+    letter-spacing: 0.1px;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    color: var(--fg-muted);
+  }
+
+  .zoom-label:hover { background: var(--hover); }
+  .zoom-label:active { background: var(--active); }
+
+  .btn-external {
+    width: 28px;
+    height: 28px;
+  }
+
+  .btn-external:hover { background: var(--hover); }
+  .btn-external:active { background: var(--active); }
+
+  /* progress line */
+  .progress-fill {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 2px;
+    width: 0;
+    background: var(--accent);
+    border-radius: 0 1px 1px 0;
+    opacity: 0;
+    transition: width 0.18s linear, opacity 0.2s ease;
+    pointer-events: none;
+  }
+
+  .bar.is-loading .progress-fill { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="bar" id="bar">
+  <div class="group" id="navGroup">
+    <button type="button" id="btnBack" class="btn-nav" aria-label="后退" title="后退 (⌘[)" disabled>
+      <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M10 3.25 5.25 8 10 12.75"/>
+      </svg>
+    </button>
+    <button type="button" id="btnForward" class="btn-nav" aria-label="前进" title="前进 (⌘])" disabled>
+      <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M6 3.25 10.75 8 6 12.75"/>
+      </svg>
+    </button>
+    <button type="button" id="btnReload" class="btn-nav" aria-label="重新载入" title="重新载入 (⌘R)">
+      <svg class="icon glyph-reload" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M13.33 8A5.33 5.33 0 1 1 8 2.67c1.49 0 2.92.6 4 1.66l1.33 1.33"/>
+        <path d="M13.33 2.67v3.33H10"/>
+      </svg>
+      <svg class="icon glyph-stop" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4.6 4.6 11.4 11.4"/>
+        <path d="M11.4 4.6 4.6 11.4"/>
+      </svg>
+    </button>
+    <button type="button" id="btnHome" class="btn-nav" aria-label="主页" title="主页 (⌘⇧H)">
+      <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M2.9 7.5 8 3.15l5.1 4.35"/>
+        <path d="M4.35 6.4v6.55a.9.9 0 0 0 .9.9h5.5a.9.9 0 0 0 .9-.9V6.4"/>
+        <path d="M6.55 13.85V9.9h2.9v3.95"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="divider" aria-hidden="true"></div>
+
+  <div class="title-area" id="titleArea">
+    <span class="title-text" id="titleText"></span>
+    <div class="notice" id="notice" role="status" aria-live="polite">
+      <span class="notice-dot" aria-hidden="true"></span>
+      <span class="notice-label" id="noticeLabel"></span>
+    </div>
+    <span class="copy-hint" id="copyHint">已复制</span>
+  </div>
+
+  <div class="divider" aria-hidden="true"></div>
+
+  <div class="group" id="rightGroup">
+    <div class="group" id="zoomGroup">
+      <button type="button" id="btnZoomOut" class="btn-zoom" aria-label="缩小" title="缩小 (⌘-)">
+        <svg class="icon-sm" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3.5 8h9"/>
+        </svg>
+      </button>
+      <button type="button" id="btnZoomReset" class="zoom-label" aria-label="重置缩放" title="重置缩放至 100%" disabled>100%</button>
+      <button type="button" id="btnZoomIn" class="btn-zoom" aria-label="放大" title="放大 (⌘+)">
+        <svg class="icon-sm" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3.5 8h9"/>
+          <path d="M8 3.5v9"/>
+        </svg>
+      </button>
+    </div>
+    <button type="button" id="btnExternal" class="btn-external" aria-label="在浏览器中打开" title="在浏览器中打开">
+      <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9.4 3.4h3.2v3.2"/>
+        <path d="M12.6 3.4 7.6 8.4"/>
+        <path d="M6.6 4.3H4.6a1 1 0 0 0-1 1v6.1a1 1 0 0 0 1 1h6.1a1 1 0 0 0 1-1V9.4"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="progress-fill" id="progressFill" aria-hidden="true"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var DEFAULT_STATE = {
+    url: '',
+    title: '',
+    canBack: false,
+    canForward: false,
+    loading: false,
+    progress: 0,
+    zoom: 1,
+    notice: null
+  };
+
+  var state = Object.assign({}, DEFAULT_STATE);
+  var lastNotice = null;
+  var noticeTimer = null;
+  var pollInFlight = false;
+  var zoomPending = false;
+
+  var bar = document.getElementById('bar');
+  var btnBack = document.getElementById('btnBack');
+  var btnForward = document.getElementById('btnForward');
+  var btnReload = document.getElementById('btnReload');
+  var btnHome = document.getElementById('btnHome');
+  var titleArea = document.getElementById('titleArea');
+  var titleText = document.getElementById('titleText');
+  var noticeEl = document.getElementById('notice');
+  var noticeLabel = document.getElementById('noticeLabel');
+  var copyHint = document.getElementById('copyHint');
+  var btnZoomOut = document.getElementById('btnZoomOut');
+  var btnZoomReset = document.getElementById('btnZoomReset');
+  var btnZoomIn = document.getElementById('btnZoomIn');
+  var btnExternal = document.getElementById('btnExternal');
+  var progressFill = document.getElementById('progressFill');
+  var hintTimer = null;
+
+  /* ---------- Tauri bridge ---------- */
+
+  function invoke(cmd, args) {
+    var internals = window.__TAURI_INTERNALS__;
+    if (!internals || typeof internals.invoke !== 'function') {
+      return Promise.reject(new Error('tauri unavailable'));
+    }
+    try {
+      var p = internals.invoke(cmd, args);
+      return p && typeof p.then === 'function' ? p : Promise.resolve(p);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+
+  function sendNav(action) {
+    try {
+      invoke('nav', { action: action }).catch(function () { /* app closing */ });
+    } catch (err) { /* ignored */ }
+  }
+
+  function sendZoom(zoom) {
+    zoomPending = true;
+    try {
+      invoke('set_zoom', { zoom: zoom })
+        .catch(function () { /* ignored */ })
+        .then(function () { zoomPending = false; });
+    } catch (err) {
+      zoomPending = false;
+    }
+  }
+
+  /* ---------- helpers ---------- */
+
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function round1(value) {
+    return Math.round(value * 10) / 10;
+  }
+
+  function hostOf(url) {
+    if (!url) return '';
+    try {
+      var parsed = new URL(url);
+      return parsed.host || url;
+    } catch (err) {
+      return url;
+    }
+  }
+
+  function asBool(value) {
+    return value === true;
+  }
+
+  function asNumber(value, fallback) {
+    return typeof value === 'number' && isFinite(value) ? value : fallback;
+  }
+
+  /* ---------- render ---------- */
+
+  function render() {
+    btnBack.disabled = !state.canBack;
+    btnForward.disabled = !state.canForward;
+
+    var loading = !!state.loading;
+    btnReload.classList.toggle('is-loading', loading);
+    if (loading) {
+      btnReload.setAttribute('aria-label', '停止载入');
+      btnReload.title = '停止载入';
+    } else {
+      btnReload.setAttribute('aria-label', '重新载入');
+      btnReload.title = '重新载入 (⌘R)';
+    }
+
+    var title = (state.title || '').replace(/\s+/g, ' ').trim();
+    var label = title || hostOf(state.url);
+    titleText.textContent = label;
+    titleArea.title = state.url || '';
+
+    var zoom = asNumber(state.zoom, 1);
+    var percent = Math.round(zoom * 100) + '%';
+    if (btnZoomReset.textContent !== percent) btnZoomReset.textContent = percent;
+    btnZoomReset.setAttribute('aria-label', '重置缩放（当前 ' + percent + '）');
+
+    var progress = clamp(asNumber(state.progress, 0), 0, 1);
+    bar.classList.toggle('is-loading', loading);
+    progressFill.style.width = loading ? (progress * 100) + '%' : '0%';
+  }
+
+  function showNotice(text) {
+    noticeLabel.textContent = text;
+    noticeEl.classList.add('show');
+    titleArea.classList.add('notice-active');
+    if (noticeTimer) clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(function () {
+      noticeEl.classList.remove('show');
+      titleArea.classList.remove('notice-active');
+      noticeTimer = null;
+    }, 3500);
+  }
+
+  function handleState(next) {
+    if (!next || typeof next !== 'object') return;
+
+    state.url = typeof next.url === 'string' ? next.url : state.url;
+    state.title = typeof next.title === 'string' ? next.title : state.title;
+    state.canBack = asBool(next.canBack);
+    state.canForward = asBool(next.canForward);
+    state.loading = asBool(next.loading);
+    state.progress = asNumber(next.progress, 0);
+    if (!zoomPending) {
+      state.zoom = asNumber(next.zoom, state.zoom || 1);
+    }
+
+    var notice = typeof next.notice === 'string' ? next.notice : '';
+    notice = notice.trim();
+    if (notice) {
+      if (notice !== lastNotice) {
+        lastNotice = notice;
+        showNotice(notice);
+      }
+    } else {
+      lastNotice = null;
+    }
+
+    render();
+  }
+
+  function poll() {
+    if (pollInFlight) return;
+    pollInFlight = true;
+    invoke('get_state')
+      .then(function (next) {
+        pollInFlight = false;
+        handleState(next);
+      })
+      .catch(function () {
+        pollInFlight = false;
+      });
+  }
+
+  /* ---------- interactions ---------- */
+
+  btnBack.addEventListener('click', function () { sendNav('back'); });
+  btnForward.addEventListener('click', function () { sendNav('forward'); });
+  btnHome.addEventListener('click', function () { sendNav('home'); });
+
+  btnReload.addEventListener('click', function (event) {
+    if (state.loading) {
+      sendNav('stop');
+      return;
+    }
+    sendNav((event.altKey || event.shiftKey) ? 'hard_reload' : 'reload');
+  });
+
+  btnExternal.addEventListener('click', function () { sendNav('open_in_browser'); });
+
+  btnZoomOut.addEventListener('click', function () {
+    var next = clamp(round1(asNumber(state.zoom, 1) - 0.1), 0.5, 2.0);
+    state.zoom = next;
+    render();
+    sendZoom(next);
+  });
+
+  btnZoomIn.addEventListener('click', function () {
+    var next = clamp(round1(asNumber(state.zoom, 1) + 0.1), 0.5, 2.0);
+    state.zoom = next;
+    render();
+    sendZoom(next);
+  });
+
+  btnZoomReset.addEventListener('click', function () {
+    state.zoom = 1;
+    render();
+    sendZoom(1);
+  });
+
+  function flashCopyHint() {
+    copyHint.classList.add('show');
+    titleArea.classList.add('hint-active');
+    if (hintTimer) clearTimeout(hintTimer);
+    hintTimer = setTimeout(function () {
+      copyHint.classList.remove('show');
+      titleArea.classList.remove('hint-active');
+      hintTimer = null;
+    }, 1200);
+  }
+
+  function copyUrl() {
+    var url = state.url;
+    if (!url) return;
+    var done = function () { flashCopyHint(); };
+    var failed = function () { /* best effort only */ };
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(url).then(done).catch(function () {
+          fallbackCopy(url) ? done() : failed();
+        });
+        return;
+      }
+    } catch (err) { /* fall through */ }
+    if (fallbackCopy(url)) done();
+  }
+
+  function fallbackCopy(text) {
+    try {
+      var area = document.createElement('textarea');
+      area.value = text;
+      area.setAttribute('readonly', '');
+      area.style.position = 'fixed';
+      area.style.top = '-1000px';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(area);
+      return !!ok;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  titleArea.addEventListener('dblclick', function () {
+    copyUrl();
+  });
+
+  document.addEventListener('contextmenu', function (event) {
+    event.preventDefault();
+  });
+
+  document.addEventListener('dragstart', function (event) {
+    event.preventDefault();
+  });
+
+  /* ---------- startup ---------- */
+
+  render();
+  poll();
+  setInterval(poll, 250);
+}());
+</script>
+</body>
+</html>
