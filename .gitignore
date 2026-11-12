@@ -14,3 +14,9 @@
 
 # Local state
 *.log
+
+# Screenshots / images captured on the local machine must never be committed
+# (the user considers desktop screenshots private).
+/docs/screenshot-*.png
+/docs/shot-*.png
+/screenshots/

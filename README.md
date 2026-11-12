@@ -4,11 +4,6 @@
 **Rust + Tauri 2** 编写。整个应用只有**一个原生窗口 + 一个 `WKWebView`**，外面补上网页版缺少的
 桌面能力：原生工具栏、中文菜单栏与快捷键、下载、应用内登录弹窗、以及与系统一致的深浅色主题。
 
-<p align="center">
-  <img src="docs/screenshot-dark.png" width="49%" alt="深色模式">
-  <img src="docs/screenshot-light.png" width="49%" alt="浅色模式">
-</p>
-
 > 非官方客户端，只提供外壳，不包含站点任何代码。
 
 ## 功能特性
@@ -85,7 +80,6 @@ src-tauri/
     main.rs            可执行入口
 ui/index.html          占位页，仅因 Tauri 要求 frontendDist 指向的目录存在
 scripts/package.sh     打包脚本
-docs/                  README 截图
 ```
 
 `lib.rs` 用 Tauri 的 `unstable` feature（`WindowBuilder::build()` + `Window::add_child()`）
